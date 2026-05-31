@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>バレーボール配置表</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #14202e;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    min-height: 100vh;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    touch-action: none; overflow-x: hidden; padding: 12px 0 24px;
+  }
+  h1 { color: #e0e8f0; font-size: 13px; letter-spacing: 2px; margin-bottom: 4px; opacity: 0.7; }
+  #status { color: #6fa8dc; font-size: 10px; margin-bottom: 8px; opacity: 0.6; height: 12px; }
+
+  #scene { position: relative; width: 360px; height: 460px; touch-action: none; }
+
+  /* SVGレイヤー */
+  #arrowLayer {
+    position: absolute; left: 0; top: 0; width: 360px; height: 460px;
+    pointer-events: none; z-index: 10;
+  }
+  #arrowLayer.drawing { pointer-events: all; cursor: crosshair; }
+
+  /* ネット */
+  #net {
+    position: absolute; left: 20px; top: 20px; width: 320px; height: 32px;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 2px, transparent 2px 10px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.85) 0 2px, transparent 2px 10px);
+    background-color: rgba(255,255,255,0.08);
+    border-top: 4px solid #fff; border-bottom: 2px solid rgba(255,255,255,0.6);
+  }
+  #net::before, #net::after {
+    content: ''; position: absolute; top: -8px; width: 5px; height: 48px;
+    background: #c9c9c9; border-radius: 2px;
+  }
+  #net::before { left: -5px; }
+  #net::after  { right: -5px; }
+  #netLabel {
+    position: absolute; left: 50%; top: 28px; transform: translateX(-50%);
+    color: #fff; font-size: 12px; font-weight: bold; letter-spacing: 3px;
+    background: rgba(20,32,46,0.85); padding: 2px 12px; border-radius: 10px; z-index: 5;
+  }
+
+  /* 自コート */
+  #court {
+    position: absolute; left: 30px; top: 56px; width: 300px; height: 380px;
+    background: linear-gradient(160deg, #2f6b1f, #285c1a);
+    border: 3px solid #fff; border-top: none; border-radius: 0 0 2px 2px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  #court .attack-line {
+    position: absolute; left: -3px; top: 110px; width: calc(100% + 6px); height: 2px;
+    background: rgba(255,255,255,0.7);
+  }
+
+  .draggable { position: absolute; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+  .pos {
+    width: 50px; height: 50px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 15px; color: #fff; border: 2px solid #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  }
+  .pos.front { background: #d1453b; }
+  .pos.back  { background: #1f6fc4; }
+
+  .ball {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #d8d8d8);
+    border: 2px solid #aaa; box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  }
+
+  /* エリア枠ラッパー */
+  .zone-wrapper {
+    position: absolute; touch-action: none; user-select: none; -webkit-user-select: none;
+    z-index: 8;
+  }
+  /* 楕円本体 */
+  .zone-ellipse {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; text-align: center; color: #fff; line-height: 1.3;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    pointer-events: none;
+  }
+  /* リサイズハンドル */
+  .handle {
+    position: absolute; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; border: 2px solid #aaa;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    touch-action: none; cursor: pointer; z-index: 9;
+  }
+  .handle-top    { top: -8px;  left: 50%; transform: translateX(-50%); }
+  .handle-bottom { bottom: -8px; left: 50%; transform: translateX(-50%); }
+  .handle-left   { left: -8px; top: 50%; transform: translateY(-50%); }
+  .handle-right  { right: -8px; top: 50%; transform: translateY(-50%); }
+
+  /* ボタン群 */
+  #btnRow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 9px 14px; font-size: 13px; font-weight: bold;
+    border: none; border-radius: 20px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3); cursor: pointer;
+  }
+  .btn:active { transform: scale(0.96); }
+  #addZoneBtn  { color: #14202e; background: #6fa8dc; }
+  #addArrowBtn { color: #14202e; background: #f0a050; }
+  #addArrowBtn.active { background: #ff6600; color: #fff; box-shadow: 0 0 12px rgba(255,100,0,0.6); }
+  #resetBtn    { color: #14202e; background: #a8d46f; }
+  .btn:disabled { background: #4a6a7a !important; color: #888 !important; cursor: not-allowed; }
+
+  #btnRow2 { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
+  #saveBtn { color: #14202e; background: #c8a0e0; }
+  #loadBtn { color: #14202e; background: #e0c860; }
+  #counters { color: #6fa8dc; font-size: 11px; margin-top: 6px; opacity: 0.7; display:flex; gap:14px; }
+  #drawHint { color: #f0a050; font-size: 11px; margin-top: 4px; height: 14px; text-align: center; }
+
+  .colorRow { display: flex; gap: 10px; margin-bottom: 16px; justify-content: center; }
+  .colorDot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+  .colorDot.active { border-color: #ffe066; }
+
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal-box {
+    background: #1e2e40; border-radius: 14px; padding: 24px 20px;
+    width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .modal-box h2 { color: #e0e8f0; font-size: 15px; margin-bottom: 14px; text-align: center; }
+  .modal-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #4a6a7a;
+    background: #14202e; color: #fff; font-size: 14px; margin-bottom: 16px; outline: none;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-ok     { flex:1; padding:10px; background:#6fa8dc; color:#14202e; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+  .modal-cancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+
+  #deleteBox p { color: #e0e8f0; font-size: 14px; margin-bottom: 16px; text-align:center; }
+  #deleteOk     { flex:1; padding:10px; background:#d1453b; color:#fff; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+  #deleteCancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+</style>
+</head>
+<body>
+  <h1>バレーボール配置表</h1>
+  <div id="status"></div>
+
+  <div id="scene">
+    <svg id="arrowLayer">
+      <defs>
+        <marker id="ah-red"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff6666"/></marker>
+        <marker id="ah-blue"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6fb5ff"/></marker>
+        <marker id="ah-green"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6fdc6f"/></marker>
+        <marker id="ah-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ffe066"/></marker>
+        <marker id="ah-white"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ffffff"/></marker>
+      </defs>
+      <line id="previewLine" stroke="#fff" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.7" style="display:none"/>
+    </svg>
+
+    <div id="net"></div>
+    <div id="netLabel">ネット</div>
+    <div id="court"><div class="attack-line"></div></div>
+
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:60px; top:130px;">FL</div>
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:155px; top:130px;">FC</div>
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:250px; top:130px;">FR</div>
+    <div class="draggable pos back"  data-x="0" data-y="0" style="left:60px; top:350px;">BL</div>
+    <div class="draggable pos back"  data-x="0" data-y="0" style="left:155px; top:370px;">BC</div>
+    <div class="draggable pos back"  data-x="0" data-y="0" style="left:250px; top:350px;">BR</div>
+    <div class="draggable ball"      data-x="0" data-y="0" style="left:170px; top:0px;"></div>
+  </div>
+
+  <div id="btnRow">
+    <button class="btn" id="addZoneBtn">＋ エリア</button>
+    <button class="btn" id="addArrowBtn">→ 矢印</button>
+    <button class="btn" id="resetBtn">リセット</button>
+  </div>
+  <div id="btnRow2">
+    <button class="btn" id="saveBtn">💾 保存</button>
+    <button class="btn" id="loadBtn">📂 読み込み</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none">
+  </div>
+  <div id="counters">
+    <span id="zoneCount">エリア: 0/5</span>
+    <span id="arrowCount">矢印: 0/5</span>
+  </div>
+  <div id="drawHint"></div>
+
+  <!-- エリアモーダル -->
+  <div class="modal-bg" id="zoneModal">
+    <div class="modal-box">
+      <h2>エリアを追加</h2>
+      <input class="modal-input" id="zoneNameInput" type="text" placeholder="エリア名（例：強打メイン）" maxlength="10">
+      <div class="colorRow" id="zoneColorRow">
+        <div class="colorDot active" data-color="rgba(214,69,59,0.45)"  data-border="rgba(255,150,140,0.9)" style="background:#d1453b;"></div>
+        <div class="colorDot"       data-color="rgba(31,111,196,0.45)"  data-border="rgba(100,180,255,0.9)" style="background:#1f6fc4;"></div>
+        <div class="colorDot"       data-color="rgba(80,180,80,0.45)"   data-border="rgba(150,255,150,0.9)" style="background:#3db848;"></div>
+        <div class="colorDot"       data-color="rgba(220,180,0,0.45)"   data-border="rgba(255,230,100,0.9)" style="background:#d4b200;"></div>
+        <div class="colorDot"       data-color="rgba(150,80,200,0.45)"  data-border="rgba(220,160,255,0.9)" style="background:#9650c8;"></div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-ok"     id="zoneOk">追加</button>
+        <button class="modal-cancel" id="zoneCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 矢印モーダル -->
+  <div class="modal-bg" id="arrowModal">
+    <div class="modal-box">
+      <h2>矢印の色を選択</h2>
+      <div class="colorRow" id="arrowColorRow">
+        <div class="colorDot active" data-stroke="#ff6666" data-marker="ah-red"    style="background:#ff6666;"></div>
+        <div class="colorDot"        data-stroke="#6fb5ff" data-marker="ah-blue"   style="background:#6fb5ff;"></div>
+        <div class="colorDot"        data-stroke="#6fdc6f" data-marker="ah-green"  style="background:#6fdc6f;"></div>
+        <div class="colorDot"        data-stroke="#ffe066" data-marker="ah-yellow" style="background:#ffe066;"></div>
+        <div class="colorDot"        data-stroke="#ffffff" data-marker="ah-white"  style="background:#ffffff;"></div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-ok"     id="arrowOk">描画モードへ</button>
+        <button class="modal-cancel" id="arrowCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除モーダル -->
+  <div class="modal-bg" id="deleteModal">
+    <div class="modal-box" id="deleteBox">
+      <p id="deleteMsg">削除しますか？</p>
+      <div class="modal-btns">
+        <button id="deleteOk">削除</button>
+        <button id="deleteCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // LIFF
+  const LIFF_ID = "2010242806-SSgzSrhm";
+  (async () => {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      document.getElementById('status').textContent = 'LINE内で起動中';
+    } catch(e) {
+      document.getElementById('status').textContent = 'ブラウザモード';
+    }
+  })();
+
+  // ポジション・ボールドラッグ
+  interact('.draggable').draggable({
+    listeners: {
+      move(e) {
+        const t = e.target;
+        const x = (parseFloat(t.getAttribute('data-x'))||0) + e.dx;
+        const y = (parseFloat(t.getAttribute('data-y'))||0) + e.dy;
+        t.style.transform = `translate(${x}px,${y}px)`;
+        t.setAttribute('data-x', x); t.setAttribute('data-y', y);
+      }
+    }
+  });
+
+  const MAX = 5;
+  let zones = [], arrows = [], pendingDelete = null;
+  let drawMode = false, arrowStroke = '#ff6666', arrowMarker = 'ah-red';
+  let zoneColor = { bg: 'rgba(214,69,59,0.45)', border: 'rgba(255,150,140,0.9)' };
+
+  const scene       = document.getElementById('scene');
+  const arrowLayer  = document.getElementById('arrowLayer');
+  const previewLine = document.getElementById('previewLine');
+  const addZoneBtn  = document.getElementById('addZoneBtn');
+  const addArrowBtn = document.getElementById('addArrowBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+  const drawHint    = document.getElementById('drawHint');
+
+  function updateCounters() {
+    document.getElementById('zoneCount').textContent  = `エリア: ${zones.length}/${MAX}`;
+    document.getElementById('arrowCount').textContent = `矢印: ${arrows.length}/${MAX}`;
+    addZoneBtn.disabled  = zones.length >= MAX;
+    addArrowBtn.disabled = arrows.length >= MAX && !drawMode;
+  }
+
+  // ===== エリア =====
+  addZoneBtn.addEventListener('click', () => {
+    document.getElementById('zoneNameInput').value = '';
+    document.getElementById('zoneModal').classList.add('show');
+  });
+  document.getElementById('zoneCancel').addEventListener('click', () => document.getElementById('zoneModal').classList.remove('show'));
+  document.getElementById('zoneModal').addEventListener('click', e => { if(e.target===document.getElementById('zoneModal')) document.getElementById('zoneModal').classList.remove('show'); });
+
+  document.querySelectorAll('#zoneColorRow .colorDot').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('#zoneColorRow .colorDot').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+      zoneColor = { bg: d.dataset.color, border: d.dataset.border };
+    });
+  });
+
+  document.getElementById('zoneOk').addEventListener('click', () => {
+    const name = document.getElementById('zoneNameInput').value.trim() || 'エリア';
+    document.getElementById('zoneModal').classList.remove('show');
+    addZone(name, zoneColor.bg, zoneColor.border);
+  });
+  document.getElementById('zoneNameInput').addEventListener('keydown', e => {
+    if(e.key === 'Enter') document.getElementById('zoneOk').click();
+  });
+
+  function addZone(name, bgColor, borderColor) {
+    if(zones.length >= MAX) return;
+
+    const MIN_W = 40, MIN_H = 30;
+    let w = 120, h = 75;
+    let dx = 0, dy = 0;
+
+    // ラッパー
+    const wrapper = document.createElement('div');
+    wrapper.className = 'zone-wrapper';
+    wrapper.style.cssText = `width:${w}px; height:${h}px; left:120px; top:240px;`;
+    wrapper.setAttribute('data-x', 0); wrapper.setAttribute('data-y', 0);
+
+    // 楕円
+    const ellipse = document.createElement('div');
+    ellipse.className = 'zone-ellipse';
+    ellipse.style.cssText = `background:${bgColor}; border:2px dashed ${borderColor};`;
+    ellipse.innerHTML = `<span>${name}</span>`;
+    wrapper.appendChild(ellipse);
+
+    // ハンドル生成
+    const handles = {
+      top:    createHandle('handle-top'),
+      bottom: createHandle('handle-bottom'),
+      left:   createHandle('handle-left'),
+      right:  createHandle('handle-right'),
+    };
+    Object.values(handles).forEach(h => wrapper.appendChild(h));
+
+    scene.appendChild(wrapper);
+    zones.push(wrapper);
+    updateCounters();
+
+    function createHandle(cls) {
+      const el = document.createElement('div');
+      el.className = `handle ${cls}`;
+      return el;
+    }
+
+    // ラッパードラッグ（楕円本体をタッチ）
+    interact(wrapper).draggable({
+      ignoreFrom: '.handle',
+      listeners: {
+        move(e) {
+          dx = (parseFloat(wrapper.getAttribute('data-x'))||0) + e.dx;
+          dy = (parseFloat(wrapper.getAttribute('data-y'))||0) + e.dy;
+          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+          wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
+        }
+      }
+    });
+
+    // 上ハンドル（縦を上に伸ばす）
+    interact(handles.top).draggable({
+      listeners: {
+        move(e) {
+          const delta = e.dy;
+          const newH = Math.max(MIN_H, h - delta);
+          const newDy = dy + (h - newH);
+          h = newH; dy = newDy;
+          wrapper.style.height = `${h}px`;
+          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+          wrapper.setAttribute('data-y', dy);
+        }
+      }
+    });
+
+    // 下ハンドル（縦を下に伸ばす）
+    interact(handles.bottom).draggable({
+      listeners: {
+        move(e) {
+          h = Math.max(MIN_H, h + e.dy);
+          wrapper.style.height = `${h}px`;
+        }
+      }
+    });
+
+    // 左ハンドル（横を左に伸ばす）
+    interact(handles.left).draggable({
+      listeners: {
+        move(e) {
+          const delta = e.dx;
+          const newW = Math.max(MIN_W, w - delta);
+          const newDx = dx + (w - newW);
+          w = newW; dx = newDx;
+          wrapper.style.width = `${w}px`;
+          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+          wrapper.setAttribute('data-x', dx);
+        }
+      }
+    });
+
+    // 右ハンドル（横を右に伸ばす）
+    interact(handles.right).draggable({
+      listeners: {
+        move(e) {
+          w = Math.max(MIN_W, w + e.dx);
+          wrapper.style.width = `${w}px`;
+        }
+      }
+    });
+
+    // 長押しで削除
+    let pt = null;
+    ellipse.addEventListener('touchstart', () => {
+      pt = setTimeout(() => showDelete(wrapper, `「${name}」を削除しますか？`, 'zone'), 700);
+    }, {passive:true});
+    ellipse.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
+    ellipse.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
+  }
+
+  // ===== 矢印 =====
+  addArrowBtn.addEventListener('click', () => {
+    if(drawMode) { exitDrawMode(); return; }
+    if(arrows.length >= MAX) return;
+    document.getElementById('arrowModal').classList.add('show');
+  });
+  document.getElementById('arrowCancel').addEventListener('click', () => document.getElementById('arrowModal').classList.remove('show'));
+  document.getElementById('arrowModal').addEventListener('click', e => { if(e.target===document.getElementById('arrowModal')) document.getElementById('arrowModal').classList.remove('show'); });
+
+  document.querySelectorAll('#arrowColorRow .colorDot').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('#arrowColorRow .colorDot').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+      arrowStroke = d.dataset.stroke; arrowMarker = d.dataset.marker;
+    });
+  });
+
+  document.getElementById('arrowOk').addEventListener('click', () => {
+    document.getElementById('arrowModal').classList.remove('show');
+    enterDrawMode();
+  });
+
+  function enterDrawMode() {
+    drawMode = true;
+    addArrowBtn.classList.add('active');
+    addArrowBtn.textContent = '✕ キャンセル';
+    drawHint.textContent = 'コート上でドラッグして矢印を描いてください';
+    arrowLayer.classList.add('drawing');
+  }
+  function exitDrawMode() {
+    drawMode = false;
+    addArrowBtn.classList.remove('active');
+    addArrowBtn.textContent = '→ 矢印';
+    drawHint.textContent = '';
+    arrowLayer.classList.remove('drawing');
+    previewLine.style.display = 'none';
+  }
+
+  let startPt = null;
+  function getPos(e, touch) {
+    const r = scene.getBoundingClientRect();
+    const src = touch ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+  function getEndPos(e, touch) {
+    const r = scene.getBoundingClientRect();
+    const src = touch ? e.changedTouches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  arrowLayer.addEventListener('touchstart', e => {
+    if(!drawMode) return; e.preventDefault();
+    startPt = getPos(e, true);
+    previewLine.style.display = 'block';
+    previewLine.setAttribute('x1', startPt.x); previewLine.setAttribute('y1', startPt.y);
+    previewLine.setAttribute('x2', startPt.x); previewLine.setAttribute('y2', startPt.y);
+    previewLine.setAttribute('stroke', arrowStroke);
+  }, {passive:false});
+  arrowLayer.addEventListener('touchmove', e => {
+    if(!drawMode || !startPt) return; e.preventDefault();
+    const p = getPos(e, true);
+    previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
+  }, {passive:false});
+  arrowLayer.addEventListener('touchend', e => {
+    if(!drawMode || !startPt) return;
+    const p = getEndPos(e, true);
+    const dx = p.x - startPt.x, dy = p.y - startPt.y;
+    if(Math.sqrt(dx*dx+dy*dy) > 20) commitArrow(startPt.x, startPt.y, p.x, p.y, arrowStroke, arrowMarker);
+    startPt = null; previewLine.style.display = 'none'; exitDrawMode(); updateCounters();
+  }, {passive:true});
+
+  arrowLayer.addEventListener('mousedown', e => {
+    if(!drawMode) return;
+    startPt = getPos(e, false);
+    previewLine.style.display = 'block';
+    previewLine.setAttribute('x1', startPt.x); previewLine.setAttribute('y1', startPt.y);
+    previewLine.setAttribute('x2', startPt.x); previewLine.setAttribute('y2', startPt.y);
+    previewLine.setAttribute('stroke', arrowStroke);
+  });
+  arrowLayer.addEventListener('mousemove', e => {
+    if(!drawMode || !startPt) return;
+    const p = getPos(e, false);
+    previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
+  });
+  arrowLayer.addEventListener('mouseup', e => {
+    if(!drawMode || !startPt) return;
+    const p = getPos(e, false);
+    const dx = p.x - startPt.x, dy = p.y - startPt.y;
+    if(Math.sqrt(dx*dx+dy*dy) > 20) commitArrow(startPt.x, startPt.y, p.x, p.y, arrowStroke, arrowMarker);
+    startPt = null; previewLine.style.display = 'none'; exitDrawMode(); updateCounters();
+  });
+
+  function commitArrow(x1,y1,x2,y2,stroke,marker) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke',stroke); line.setAttribute('stroke-width','3');
+    line.setAttribute('marker-end',`url(#${marker})`);
+    line.style.pointerEvents = 'stroke'; line.style.cursor = 'pointer';
+    arrowLayer.appendChild(line);
+    arrows.push(line);
+    let pt = null;
+    line.addEventListener('touchstart', () => { pt = setTimeout(() => showDelete(line, '矢印を削除しますか？', 'arrow'), 700); }, {passive:true});
+    line.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
+    line.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
+    line.addEventListener('dblclick',  () => showDelete(line, '矢印を削除しますか？', 'arrow'));
+  }
+
+  // 削除
+  function showDelete(target, msg, type) {
+    pendingDelete = { target, type };
+    document.getElementById('deleteMsg').textContent = msg;
+    document.getElementById('deleteModal').classList.add('show');
+  }
+  document.getElementById('deleteOk').addEventListener('click', () => {
+    if(!pendingDelete) return;
+    const { target, type } = pendingDelete;
+    if(type === 'zone')  { target.remove(); zones  = zones.filter(z => z !== target); }
+    if(type === 'arrow') { target.remove(); arrows = arrows.filter(a => a !== target); }
+    pendingDelete = null;
+    document.getElementById('deleteModal').classList.remove('show');
+    updateCounters();
+  });
+  document.getElementById('deleteCancel').addEventListener('click', () => {
+    pendingDelete = null;
+    document.getElementById('deleteModal').classList.remove('show');
+  });
+
+  // ===== JSON保存 =====
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    // ポジション・ボール
+    const positions = [];
+    document.querySelectorAll('.draggable').forEach(el => {
+      positions.push({
+        label: el.textContent.trim(),
+        className: el.className,
+        left: el.style.left,
+        top: el.style.top,
+        dx: parseFloat(el.getAttribute('data-x')) || 0,
+        dy: parseFloat(el.getAttribute('data-y')) || 0
+      });
+    });
+
+    // エリア
+    const zoneData = zones.map(w => {
+      const ellipse = w.querySelector('.zone-ellipse');
+      return {
+        name: ellipse.querySelector('span').textContent,
+        bg: ellipse.style.background,
+        border: ellipse.style.border,
+        left: w.style.left,
+        top: w.style.top,
+        width: w.style.width,
+        height: w.style.height,
+        dx: parseFloat(w.getAttribute('data-x')) || 0,
+        dy: parseFloat(w.getAttribute('data-y')) || 0
+      };
+    });
+
+    // 矢印
+    const arrowData = arrows.map(line => ({
+      x1: line.getAttribute('x1'), y1: line.getAttribute('y1'),
+      x2: line.getAttribute('x2'), y2: line.getAttribute('y2'),
+      stroke: line.getAttribute('stroke'),
+      marker: line.getAttribute('marker-end').replace('url(#','').replace(')','')
+    }));
+
+    const data = { positions, zones: zoneData, arrows: arrowData };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const now  = new Date();
+    const ts   = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    a.href = url; a.download = `volley_${ts}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  });
+
+  // ===== JSON読み込み =====
+  document.getElementById('loadBtn').addEventListener('click', () => {
+    document.getElementById('fileInput').click();
+  });
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+
+        // ポジション・ボール復元
+        if(data.positions) {
+          const draggables = document.querySelectorAll('.draggable');
+          data.positions.forEach((p, i) => {
+            if(!draggables[i]) return;
+            draggables[i].style.transform = `translate(${p.dx}px,${p.dy}px)`;
+            draggables[i].setAttribute('data-x', p.dx);
+            draggables[i].setAttribute('data-y', p.dy);
+          });
+        }
+
+        // 既存エリア・矢印を削除
+        zones.forEach(z => z.remove()); zones = [];
+        arrows.forEach(a => a.remove()); arrows = [];
+
+        // エリア復元
+        if(data.zones) {
+          data.zones.forEach(z => {
+            // bgからcolorとborderを抽出して再生成
+            const wrapper = document.createElement('div');
+            wrapper.className = 'zone-wrapper';
+            wrapper.style.cssText = `width:${z.width}; height:${z.height}; left:${z.left}; top:${z.top};`;
+            wrapper.setAttribute('data-x', z.dx); wrapper.setAttribute('data-y', z.dy);
+            wrapper.style.transform = `translate(${z.dx}px,${z.dy}px)`;
+
+            const ellipse = document.createElement('div');
+            ellipse.className = 'zone-ellipse';
+            ellipse.style.background = z.bg;
+            ellipse.style.border = z.border;
+            ellipse.innerHTML = `<span>${z.name}</span>`;
+            wrapper.appendChild(ellipse);
+
+            // ハンドル
+            ['handle-top','handle-bottom','handle-left','handle-right'].forEach(cls => {
+              const h = document.createElement('div');
+              h.className = `handle ${cls}`; wrapper.appendChild(h);
+            });
+
+            scene.appendChild(wrapper);
+            zones.push(wrapper);
+
+            // ドラッグ再設定
+            const MIN_W = 40, MIN_H = 30;
+            let w = parseFloat(z.width), h = parseFloat(z.height);
+            let dx = z.dx, dy = z.dy;
+            const handles = {
+              top:    wrapper.querySelector('.handle-top'),
+              bottom: wrapper.querySelector('.handle-bottom'),
+              left:   wrapper.querySelector('.handle-left'),
+              right:  wrapper.querySelector('.handle-right'),
+            };
+
+            interact(wrapper).draggable({
+              ignoreFrom: '.handle',
+              listeners: { move(e) {
+                dx = (parseFloat(wrapper.getAttribute('data-x'))||0) + e.dx;
+                dy = (parseFloat(wrapper.getAttribute('data-y'))||0) + e.dy;
+                wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+                wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
+              }}
+            });
+            interact(handles.top).draggable({ listeners: { move(e) {
+              const newH = Math.max(MIN_H, h - e.dy);
+              dy += (h - newH); h = newH;
+              wrapper.style.height = `${h}px`;
+              wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+              wrapper.setAttribute('data-y', dy);
+            }}});
+            interact(handles.bottom).draggable({ listeners: { move(e) {
+              h = Math.max(MIN_H, h + e.dy); wrapper.style.height = `${h}px`;
+            }}});
+            interact(handles.left).draggable({ listeners: { move(e) {
+              const newW = Math.max(MIN_W, w - e.dx);
+              dx += (w - newW); w = newW;
+              wrapper.style.width = `${w}px`;
+              wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+              wrapper.setAttribute('data-x', dx);
+            }}});
+            interact(handles.right).draggable({ listeners: { move(e) {
+              w = Math.max(MIN_W, w + e.dx); wrapper.style.width = `${w}px`;
+            }}});
+
+            let pt = null;
+            ellipse.addEventListener('touchstart', () => {
+              pt = setTimeout(() => showDelete(wrapper, `「${z.name}」を削除しますか？`, 'zone'), 700);
+            }, {passive:true});
+            ellipse.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
+            ellipse.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
+          });
+        }
+
+        // 矢印復元
+        if(data.arrows) {
+          data.arrows.forEach(a => {
+            commitArrow(
+              parseFloat(a.x1), parseFloat(a.y1),
+              parseFloat(a.x2), parseFloat(a.y2),
+              a.stroke, a.marker
+            );
+          });
+        }
+
+        updateCounters();
+      } catch(err) {
+        alert('読み込みに失敗しました。正しいJSONファイルを選択してください。');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // 同じファイルを再選択できるようリセット
+  });
+
+  // リセット
+  resetBtn.addEventListener('click', () => {
+    document.querySelectorAll('.draggable').forEach(el => {
+      el.style.transform = 'translate(0px,0px)';
+      el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
+    });
+    zones.forEach(z => z.remove()); zones = [];
+    arrows.forEach(a => a.remove()); arrows = [];
+    exitDrawMode(); updateCounters();
+  });
+
+  updateCounters();
+</script>
+</body>
+</html>
