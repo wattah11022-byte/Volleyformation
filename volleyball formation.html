@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>バレーボール配置表</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #14202e;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    min-height: 100vh;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+    touch-action: none; overflow-x: hidden; padding: 12px 0 24px;
+  }
+  h1 { color: #e0e8f0; font-size: 13px; letter-spacing: 2px; margin-bottom: 4px; opacity: 0.7; }
+  #status { color: #6fa8dc; font-size: 10px; margin-bottom: 8px; opacity: 0.6; height: 12px; }
+
+  #scene {
+    position: relative; width: 360px; height: 460px;
+    touch-action: none;
+  }
+
+  /* SVGレイヤー（矢印描画用） */
+  #arrowLayer {
+    position: absolute; left: 0; top: 0; width: 360px; height: 460px;
+    pointer-events: none; z-index: 10;
+  }
+  #arrowLayer.drawing { pointer-events: all; cursor: crosshair; }
+
+  /* 描画中プレビュー線 */
+  #previewLine { display: none; }
+
+  /* ネット */
+  #net {
+    position: absolute; left: 20px; top: 20px; width: 320px; height: 32px;
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.85) 0 2px, transparent 2px 10px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.85) 0 2px, transparent 2px 10px);
+    background-color: rgba(255,255,255,0.08);
+    border-top: 4px solid #fff; border-bottom: 2px solid rgba(255,255,255,0.6);
+  }
+  #net::before, #net::after {
+    content: ''; position: absolute; top: -8px; width: 5px; height: 48px;
+    background: #c9c9c9; border-radius: 2px;
+  }
+  #net::before { left: -5px; }
+  #net::after  { right: -5px; }
+  #netLabel {
+    position: absolute; left: 50%; top: 28px; transform: translateX(-50%);
+    color: #fff; font-size: 12px; font-weight: bold; letter-spacing: 3px;
+    background: rgba(20,32,46,0.85); padding: 2px 12px; border-radius: 10px; z-index: 5;
+  }
+
+  /* 自コート */
+  #court {
+    position: absolute; left: 30px; top: 56px; width: 300px; height: 380px;
+    background: linear-gradient(160deg, #2f6b1f, #285c1a);
+    border: 3px solid #fff; border-top: none; border-radius: 0 0 2px 2px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  #court .attack-line {
+    position: absolute; left: -3px; top: 110px; width: calc(100% + 6px); height: 2px;
+    background: rgba(255,255,255,0.7);
+  }
+
+  .draggable { position: absolute; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+  .pos {
+    width: 50px; height: 50px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 15px; color: #fff; border: 2px solid #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  }
+  .pos.front { background: #d1453b; }
+  .pos.back  { background: #1f6fc4; }
+
+  .ball {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #d8d8d8);
+    border: 2px solid #aaa; box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+  }
+
+  .zone {
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; text-align: center; color: #fff; line-height: 1.3;
+    position: absolute; touch-action: none; user-select: none; -webkit-user-select: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: grab;
+  }
+
+  /* ボタン群 */
+  #btnRow {
+    display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; justify-content: center;
+  }
+  .btn {
+    padding: 9px 14px; font-size: 13px; font-weight: bold;
+    border: none; border-radius: 20px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3); cursor: pointer;
+  }
+  .btn:active { transform: scale(0.96); }
+  #addZoneBtn  { color: #14202e; background: #6fa8dc; }
+  #addArrowBtn { color: #14202e; background: #f0a050; }
+  #addArrowBtn.active { background: #ff6600; color: #fff; box-shadow: 0 0 12px rgba(255,100,0,0.6); }
+  #resetBtn    { color: #14202e; background: #a8d46f; }
+  .btn:disabled { background: #4a6a7a !important; color: #888 !important; cursor: not-allowed; }
+
+  #counters { color: #6fa8dc; font-size: 11px; margin-top: 6px; opacity: 0.7; display:flex; gap:14px; }
+  #drawHint {
+    color: #f0a050; font-size: 11px; margin-top: 4px; height: 14px; text-align: center;
+  }
+
+  /* 色選択共通 */
+  .colorRow { display: flex; gap: 10px; margin-bottom: 16px; justify-content: center; }
+  .colorDot {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent;
+  }
+  .colorDot.active { border-color: #ffe066; }
+
+  /* モーダル共通 */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal-box {
+    background: #1e2e40; border-radius: 14px; padding: 24px 20px;
+    width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .modal-box h2 { color: #e0e8f0; font-size: 15px; margin-bottom: 14px; text-align: center; }
+  .modal-input {
+    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #4a6a7a;
+    background: #14202e; color: #fff; font-size: 14px; margin-bottom: 16px; outline: none;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-ok { flex:1; padding:10px; background:#6fa8dc; color:#14202e; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+  .modal-cancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+
+  /* 削除確認 */
+  #deleteBox p { color: #e0e8f0; font-size: 14px; margin-bottom: 16px; text-align:center; }
+  #deleteOk { flex:1; padding:10px; background:#d1453b; color:#fff; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+  #deleteCancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
+</style>
+</head>
+<body>
+  <h1>バレーボール配置表</h1>
+  <div id="status"></div>
+
+  <div id="scene">
+    <!-- SVG矢印レイヤー -->
+    <svg id="arrowLayer">
+      <defs>
+        <!-- 矢印マーカー（色ごと） -->
+        <marker id="ah-red"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ff6666"/></marker>
+        <marker id="ah-blue"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6fb5ff"/></marker>
+        <marker id="ah-green"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#6fdc6f"/></marker>
+        <marker id="ah-yellow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ffe066"/></marker>
+        <marker id="ah-white"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#ffffff"/></marker>
+      </defs>
+      <!-- プレビュー線 -->
+      <line id="previewLine" stroke="#fff" stroke-width="2.5" stroke-dasharray="6,4" opacity="0.7"/>
+    </svg>
+
+    <div id="net"></div>
+    <div id="netLabel">ネット</div>
+    <div id="court"><div class="attack-line"></div></div>
+
+    <!-- 前衛（赤） -->
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:60px; top:130px;">FL</div>
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:155px; top:130px;">FC</div>
+    <div class="draggable pos front" data-x="0" data-y="0" style="left:250px; top:130px;">FR</div>
+    <!-- 後衛（青） -->
+    <div class="draggable pos back" data-x="0" data-y="0" style="left:60px; top:350px;">BL</div>
+    <div class="draggable pos back" data-x="0" data-y="0" style="left:155px; top:370px;">BC</div>
+    <div class="draggable pos back" data-x="0" data-y="0" style="left:250px; top:350px;">BR</div>
+    <!-- ボール -->
+    <div class="draggable ball" data-x="0" data-y="0" style="left:170px; top:0px;"></div>
+  </div>
+
+  <div id="btnRow">
+    <button class="btn" id="addZoneBtn">＋ エリア</button>
+    <button class="btn" id="addArrowBtn">→ 矢印</button>
+    <button class="btn" id="resetBtn">リセット</button>
+  </div>
+  <div id="counters">
+    <span id="zoneCount">エリア: 0/5</span>
+    <span id="arrowCount">矢印: 0/5</span>
+  </div>
+  <div id="drawHint"></div>
+
+  <!-- エリア追加モーダル -->
+  <div class="modal-bg" id="zoneModal">
+    <div class="modal-box">
+      <h2>エリアを追加</h2>
+      <input class="modal-input" id="zoneNameInput" type="text" placeholder="エリア名（例：強打メイン）" maxlength="10">
+      <div class="colorRow" id="zoneColorRow">
+        <div class="colorDot active" data-color="rgba(214,69,59,0.45)"  data-border="rgba(255,150,140,0.9)" style="background:#d1453b;"></div>
+        <div class="colorDot"       data-color="rgba(31,111,196,0.45)"  data-border="rgba(100,180,255,0.9)" style="background:#1f6fc4;"></div>
+        <div class="colorDot"       data-color="rgba(80,180,80,0.45)"   data-border="rgba(150,255,150,0.9)" style="background:#3db848;"></div>
+        <div class="colorDot"       data-color="rgba(220,180,0,0.45)"   data-border="rgba(255,230,100,0.9)" style="background:#d4b200;"></div>
+        <div class="colorDot"       data-color="rgba(150,80,200,0.45)"  data-border="rgba(220,160,255,0.9)" style="background:#9650c8;"></div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-ok"     id="zoneOk">追加</button>
+        <button class="modal-cancel" id="zoneCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 矢印色選択モーダル -->
+  <div class="modal-bg" id="arrowModal">
+    <div class="modal-box">
+      <h2>矢印の色を選択</h2>
+      <div class="colorRow" id="arrowColorRow">
+        <div class="colorDot active" data-stroke="#ff6666" data-marker="ah-red"    style="background:#ff6666;"></div>
+        <div class="colorDot"        data-stroke="#6fb5ff" data-marker="ah-blue"   style="background:#6fb5ff;"></div>
+        <div class="colorDot"        data-stroke="#6fdc6f" data-marker="ah-green"  style="background:#6fdc6f;"></div>
+        <div class="colorDot"        data-stroke="#ffe066" data-marker="ah-yellow" style="background:#ffe066;"></div>
+        <div class="colorDot"        data-stroke="#ffffff" data-marker="ah-white"  style="background:#ffffff;"></div>
+      </div>
+      <div class="modal-btns">
+        <button class="modal-ok"     id="arrowOk">描画モードへ</button>
+        <button class="modal-cancel" id="arrowCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div class="modal-bg" id="deleteModal">
+    <div class="modal-box" id="deleteBox">
+      <p id="deleteMsg">削除しますか？</p>
+      <div class="modal-btns">
+        <button id="deleteOk">削除</button>
+        <button id="deleteCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ===== LIFF =====
+  const LIFF_ID = "2010242806-SSgzSrhm";
+  (async () => {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      document.getElementById('status').textContent = 'LINE内で起動中';
+    } catch(e) {
+      document.getElementById('status').textContent = 'ブラウザモード';
+    }
+  })();
+
+  // ===== ポジション・ボールのドラッグ =====
+  interact('.draggable').draggable({
+    listeners: {
+      move(e) {
+        const t = e.target;
+        const x = (parseFloat(t.getAttribute('data-x'))||0) + e.dx;
+        const y = (parseFloat(t.getAttribute('data-y'))||0) + e.dy;
+        t.style.transform = `translate(${x}px,${y}px)`;
+        t.setAttribute('data-x', x);
+        t.setAttribute('data-y', y);
+      }
+    }
+  });
+
+  // ===== 状態管理 =====
+  const MAX = 5;
+  let zones   = [];
+  let arrows  = [];
+  let pendingDelete = null;
+  let drawMode = false;
+  let arrowStroke = '#ff6666';
+  let arrowMarker = 'ah-red';
+  let zoneColor = { bg: 'rgba(214,69,59,0.45)', border: 'rgba(255,150,140,0.9)' };
+
+  // DOM
+  const scene       = document.getElementById('scene');
+  const arrowLayer  = document.getElementById('arrowLayer');
+  const previewLine = document.getElementById('previewLine');
+  const addZoneBtn  = document.getElementById('addZoneBtn');
+  const addArrowBtn = document.getElementById('addArrowBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+  const zoneModal   = document.getElementById('zoneModal');
+  const arrowModal  = document.getElementById('arrowModal');
+  const deleteModal = document.getElementById('deleteModal');
+  const drawHint    = document.getElementById('drawHint');
+
+  function updateCounters() {
+    document.getElementById('zoneCount').textContent  = `エリア: ${zones.length}/${MAX}`;
+    document.getElementById('arrowCount').textContent = `矢印: ${arrows.length}/${MAX}`;
+    addZoneBtn.disabled  = zones.length  >= MAX;
+    addArrowBtn.disabled = arrows.length >= MAX && !drawMode;
+  }
+
+  // ===== エリア =====
+  addZoneBtn.addEventListener('click', () => {
+    document.getElementById('zoneNameInput').value = '';
+    zoneModal.classList.add('show');
+  });
+  document.getElementById('zoneCancel').addEventListener('click', () => zoneModal.classList.remove('show'));
+  zoneModal.addEventListener('click', e => { if(e.target===zoneModal) zoneModal.classList.remove('show'); });
+
+  document.querySelectorAll('#zoneColorRow .colorDot').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('#zoneColorRow .colorDot').forEach(x=>x.classList.remove('active'));
+      d.classList.add('active');
+      zoneColor = { bg: d.dataset.color, border: d.dataset.border };
+    });
+  });
+
+  document.getElementById('zoneOk').addEventListener('click', () => {
+    const name = document.getElementById('zoneNameInput').value.trim() || 'エリア';
+    zoneModal.classList.remove('show');
+    addZone(name, zoneColor.bg, zoneColor.border);
+  });
+  document.getElementById('zoneNameInput').addEventListener('keydown', e => {
+    if(e.key==='Enter') document.getElementById('zoneOk').click();
+  });
+
+  function addZone(name, bgColor, borderColor) {
+    if(zones.length >= MAX) return;
+    const el = document.createElement('div');
+    el.className = 'zone';
+    el.style.cssText = `width:120px;height:75px;background:${bgColor};border:2px dashed ${borderColor};left:120px;top:240px;`;
+    el.innerHTML = `<span>${name}</span>`;
+    el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
+
+    scene.appendChild(el);
+    zones.push(el);
+    updateCounters();
+
+    interact(el)
+      .draggable({
+        listeners: {
+          move(e) {
+            const x = (parseFloat(el.getAttribute('data-x'))||0) + e.dx;
+            const y = (parseFloat(el.getAttribute('data-y'))||0) + e.dy;
+            el.style.transform = `translate(${x}px,${y}px) scale(${parseFloat(el.getAttribute('data-scale'))||1})`;
+            el.setAttribute('data-x', x); el.setAttribute('data-y', y);
+          }
+        }
+      })
+      .gesturable({
+        listeners: {
+          move(e) {
+            const prev = parseFloat(el.getAttribute('data-scale'))||1;
+            const ns = Math.min(3, Math.max(0.3, prev * e.scale));
+            el.setAttribute('data-scale', ns);
+            const x = parseFloat(el.getAttribute('data-x'))||0;
+            const y = parseFloat(el.getAttribute('data-y'))||0;
+            el.style.transform = `translate(${x}px,${y}px) scale(${ns})`;
+            e.preventDefault();
+          }
+        }
+      });
+
+    let pt = null;
+    el.addEventListener('touchstart', e => { pt = setTimeout(() => showDelete(el, `「${name}」を削除しますか？`, 'zone'), 700); }, {passive:true});
+    el.addEventListener('touchend',   () => clearTimeout(pt), {passive:true});
+    el.addEventListener('touchmove',  () => clearTimeout(pt), {passive:true});
+  }
+
+  // ===== 矢印 =====
+  addArrowBtn.addEventListener('click', () => {
+    if(arrows.length >= MAX) return;
+    arrowModal.classList.add('show');
+  });
+  document.getElementById('arrowCancel').addEventListener('click', () => arrowModal.classList.remove('show'));
+  arrowModal.addEventListener('click', e => { if(e.target===arrowModal) arrowModal.classList.remove('show'); });
+
+  document.querySelectorAll('#arrowColorRow .colorDot').forEach(d => {
+    d.addEventListener('click', () => {
+      document.querySelectorAll('#arrowColorRow .colorDot').forEach(x=>x.classList.remove('active'));
+      d.classList.add('active');
+      arrowStroke = d.dataset.stroke;
+      arrowMarker = d.dataset.marker;
+    });
+  });
+
+  document.getElementById('arrowOk').addEventListener('click', () => {
+    arrowModal.classList.remove('show');
+    enterDrawMode();
+  });
+
+  function enterDrawMode() {
+    drawMode = true;
+    addArrowBtn.classList.add('active');
+    addArrowBtn.textContent = '✕ キャンセル';
+    drawHint.textContent = 'コート上でドラッグして矢印を描いてください';
+    arrowLayer.classList.add('drawing');
+  }
+
+  function exitDrawMode() {
+    drawMode = false;
+    addArrowBtn.classList.remove('active');
+    addArrowBtn.textContent = '→ 矢印';
+    drawHint.textContent = '';
+    arrowLayer.classList.remove('drawing');
+    previewLine.style.display = 'none';
+  }
+
+  addArrowBtn.addEventListener('click', () => {
+    if(drawMode) { exitDrawMode(); return; }
+  });
+
+  // タッチで矢印描画
+  let startPt = null;
+  arrowLayer.addEventListener('touchstart', e => {
+    if(!drawMode) return;
+    e.preventDefault();
+    const r = scene.getBoundingClientRect();
+    const t = e.touches[0];
+    startPt = { x: t.clientX - r.left, y: t.clientY - r.top };
+    previewLine.style.display = 'block';
+    previewLine.setAttribute('x1', startPt.x); previewLine.setAttribute('y1', startPt.y);
+    previewLine.setAttribute('x2', startPt.x); previewLine.setAttribute('y2', startPt.y);
+    previewLine.setAttribute('stroke', arrowStroke);
+  }, {passive:false});
+
+  arrowLayer.addEventListener('touchmove', e => {
+    if(!drawMode || !startPt) return;
+    e.preventDefault();
+    const r = scene.getBoundingClientRect();
+    const t = e.touches[0];
+    previewLine.setAttribute('x2', t.clientX - r.left);
+    previewLine.setAttribute('y2', t.clientY - r.top);
+  }, {passive:false});
+
+  arrowLayer.addEventListener('touchend', e => {
+    if(!drawMode || !startPt) return;
+    const r = scene.getBoundingClientRect();
+    const t = e.changedTouches[0];
+    const ex = t.clientX - r.left;
+    const ey = t.clientY - r.top;
+    const dx = ex - startPt.x, dy = ey - startPt.y;
+    if(Math.sqrt(dx*dx+dy*dy) > 20) {
+      commitArrow(startPt.x, startPt.y, ex, ey, arrowStroke, arrowMarker);
+    }
+    startPt = null;
+    previewLine.style.display = 'none';
+    exitDrawMode();
+    updateCounters();
+  }, {passive:true});
+
+  // マウスでも描画（PC確認用）
+  arrowLayer.addEventListener('mousedown', e => {
+    if(!drawMode) return;
+    const r = scene.getBoundingClientRect();
+    startPt = { x: e.clientX - r.left, y: e.clientY - r.top };
+    previewLine.style.display = 'block';
+    previewLine.setAttribute('x1', startPt.x); previewLine.setAttribute('y1', startPt.y);
+    previewLine.setAttribute('x2', startPt.x); previewLine.setAttribute('y2', startPt.y);
+    previewLine.setAttribute('stroke', arrowStroke);
+  });
+  arrowLayer.addEventListener('mousemove', e => {
+    if(!drawMode || !startPt) return;
+    const r = scene.getBoundingClientRect();
+    previewLine.setAttribute('x2', e.clientX - r.left);
+    previewLine.setAttribute('y2', e.clientY - r.top);
+  });
+  arrowLayer.addEventListener('mouseup', e => {
+    if(!drawMode || !startPt) return;
+    const r = scene.getBoundingClientRect();
+    const ex = e.clientX - r.left, ey = e.clientY - r.top;
+    const dx = ex - startPt.x, dy = ey - startPt.y;
+    if(Math.sqrt(dx*dx+dy*dy) > 20) {
+      commitArrow(startPt.x, startPt.y, ex, ey, arrowStroke, arrowMarker);
+    }
+    startPt = null;
+    previewLine.style.display = 'none';
+    exitDrawMode();
+    updateCounters();
+  });
+
+  function commitArrow(x1,y1,x2,y2,stroke,marker) {
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke',stroke);
+    line.setAttribute('stroke-width','3');
+    line.setAttribute('marker-end',`url(#${marker})`);
+    line.style.pointerEvents = 'stroke';
+    line.style.cursor = 'pointer';
+    arrowLayer.appendChild(line);
+    arrows.push(line);
+
+    // 長押しで削除
+    let pt = null;
+    line.addEventListener('touchstart', e => {
+      pt = setTimeout(() => showDelete(line, '矢印を削除しますか？', 'arrow'), 700);
+    }, {passive:true});
+    line.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
+    line.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
+    // PC用：ダブルクリックで削除
+    line.addEventListener('dblclick', () => showDelete(line, '矢印を削除しますか？', 'arrow'));
+  }
+
+  // ===== 削除 =====
+  function showDelete(target, msg, type) {
+    pendingDelete = { target, type };
+    document.getElementById('deleteMsg').textContent = msg;
+    deleteModal.classList.add('show');
+  }
+
+  document.getElementById('deleteOk').addEventListener('click', () => {
+    if(!pendingDelete) return;
+    const { target, type } = pendingDelete;
+    if(type === 'zone') {
+      target.remove();
+      zones = zones.filter(z => z !== target);
+    } else if(type === 'arrow') {
+      target.remove();
+      arrows = arrows.filter(a => a !== target);
+    }
+    pendingDelete = null;
+    deleteModal.classList.remove('show');
+    updateCounters();
+  });
+  document.getElementById('deleteCancel').addEventListener('click', () => {
+    pendingDelete = null;
+    deleteModal.classList.remove('show');
+  });
+
+  // ===== リセット =====
+  resetBtn.addEventListener('click', () => {
+    // ポジション・ボールをリセット
+    document.querySelectorAll('.draggable').forEach(el => {
+      el.style.transform = 'translate(0px,0px)';
+      el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
+    });
+    // エリア・矢印を全削除
+    zones.forEach(z => z.remove()); zones = [];
+    arrows.forEach(a => a.remove()); arrows = [];
+    exitDrawMode();
+    updateCounters();
+  });
+
+  updateCounters();
+</script>
+</body>
+</html>
