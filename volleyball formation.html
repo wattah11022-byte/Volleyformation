@@ -18,16 +18,22 @@
   h1 { color: #e0e8f0; font-size: 13px; letter-spacing: 2px; margin-bottom: 4px; opacity: 0.7; }
   #status { color: #6fa8dc; font-size: 10px; margin-bottom: 8px; opacity: 0.6; height: 12px; }
 
-  #scene { position: relative; width: 360px; height: 460px; touch-action: none; }
+  /* パターン名入力 */
+  #patternRow { margin-bottom: 10px; }
+  #patternName {
+    width: 300px; padding: 8px 12px; border-radius: 8px; border: 1px solid #3a5068;
+    background: #1e2e40; color: #fff; font-size: 14px; text-align: center; outline: none;
+  }
+  #patternName::placeholder { color: #5a7088; }
 
-  /* SVGレイヤー */
+  #scene { position: relative; width: 360px; height: 430px; touch-action: none; }
+
   #arrowLayer {
-    position: absolute; left: 0; top: 0; width: 360px; height: 460px;
+    position: absolute; left: 0; top: 0; width: 360px; height: 430px;
     pointer-events: none; z-index: 10;
   }
   #arrowLayer.drawing { pointer-events: all; cursor: crosshair; }
 
-  /* ネット */
   #net {
     position: absolute; left: 20px; top: 20px; width: 320px; height: 32px;
     background:
@@ -48,54 +54,64 @@
     background: rgba(20,32,46,0.85); padding: 2px 12px; border-radius: 10px; z-index: 5;
   }
 
-  /* 自コート */
   #court {
-    position: absolute; left: 30px; top: 56px; width: 300px; height: 380px;
+    position: absolute; left: 30px; top: 56px; width: 300px; height: 350px;
     background: linear-gradient(160deg, #2f6b1f, #285c1a);
     border: 3px solid #fff; border-top: none; border-radius: 0 0 2px 2px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   }
   #court .attack-line {
-    position: absolute; left: -3px; top: 110px; width: calc(100% + 6px); height: 2px;
+    position: absolute; left: -3px; top: 100px; width: calc(100% + 6px); height: 2px;
     background: rgba(255,255,255,0.7);
+  }
+
+  /* 番外エリア（控え選手置き場） */
+  #bench {
+    position: absolute; left: 30px; top: 412px; width: 300px; height: 14px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  #benchLabel {
+    position: absolute; left: 30px; top: 410px;
+    color: #8aa0b8; font-size: 9px; opacity: 0.6;
   }
 
   .draggable { position: absolute; touch-action: none; user-select: none; -webkit-user-select: none; }
 
+  /* ポジション（コート位置表記） */
   .pos {
     width: 50px; height: 50px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-weight: bold; font-size: 15px; color: #fff; border: 2px solid #fff;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+    font-weight: bold; font-size: 14px; color: #fff; border: 2px solid #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.4); z-index: 6;
   }
   .pos.front { background: #d1453b; }
   .pos.back  { background: #1f6fc4; }
 
+  /* 役割モード（烏野カラー：黒×オレンジ） */
+  .pos.role        { background: #1a1a1a; border: 3px solid #ff7a00; color: #ff7a00; }
+  .pos.role.libero { background: #ff7a00; border: 3px solid #1a1a1a; color: #1a1a1a; }
+  /* 番外の控え */
+  .pos.bench-player {
+    position: absolute; width: 38px; height: 38px; font-size: 12px;
+    top: 412px; z-index: 6;
+  }
+
   .ball {
     width: 30px; height: 30px; border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fff, #d8d8d8);
-    border: 2px solid #aaa; box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+    border: 2px solid #aaa; box-shadow: 0 3px 6px rgba(0,0,0,0.4); z-index: 6;
   }
 
-  /* エリア枠ラッパー */
-  .zone-wrapper {
-    position: absolute; touch-action: none; user-select: none; -webkit-user-select: none;
-    z-index: 8;
-  }
-  /* 楕円本体 */
+  .zone-wrapper { position: absolute; touch-action: none; user-select: none; -webkit-user-select: none; z-index: 8; }
   .zone-ellipse {
-    width: 100%; height: 100%;
-    border-radius: 50%;
+    width: 100%; height: 100%; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 11px; font-weight: bold; text-align: center; color: #fff; line-height: 1.3;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3); pointer-events: none;
   }
-  /* リサイズハンドル */
   .handle {
     position: absolute; width: 16px; height: 16px; border-radius: 50%;
-    background: #fff; border: 2px solid #aaa;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    background: #fff; border: 2px solid #aaa; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     touch-action: none; cursor: pointer; z-index: 9;
   }
   .handle-top    { top: -8px;  left: 50%; transform: translateX(-50%); }
@@ -103,23 +119,24 @@
   .handle-left   { left: -8px; top: 50%; transform: translateY(-50%); }
   .handle-right  { right: -8px; top: 50%; transform: translateY(-50%); }
 
-  /* ボタン群 */
-  #btnRow { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  #btnRow, #btnRow2, #btnRow3 { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
   .btn {
     padding: 9px 14px; font-size: 13px; font-weight: bold;
-    border: none; border-radius: 20px;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.3); cursor: pointer;
+    border: none; border-radius: 20px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); cursor: pointer;
   }
   .btn:active { transform: scale(0.96); }
   #addZoneBtn  { color: #14202e; background: #6fa8dc; }
   #addArrowBtn { color: #14202e; background: #f0a050; }
   #addArrowBtn.active { background: #ff6600; color: #fff; box-shadow: 0 0 12px rgba(255,100,0,0.6); }
   #resetBtn    { color: #14202e; background: #a8d46f; }
-  .btn:disabled { background: #4a6a7a !important; color: #888 !important; cursor: not-allowed; }
+  #saveBtn     { color: #14202e; background: #c8a0e0; }
+  #loadBtn     { color: #14202e; background: #e0c860; }
+  #modeBtn     { color: #fff; background: #1a1a1a; border: 2px solid #ff7a00; }
+  #modeBtn.role-active { background: #ff7a00; color: #1a1a1a; border-color: #1a1a1a; }
+  #rotateBtn   { color: #1a1a1a; background: #ff7a00; display: none; }
+  #rotateBtn.show { display: inline-block; }
+  .btn:disabled { background: #4a6a7a !important; color: #888 !important; border-color:#4a6a7a !important; cursor: not-allowed; }
 
-  #btnRow2 { display: flex; gap: 8px; margin-top: 8px; justify-content: center; }
-  #saveBtn { color: #14202e; background: #c8a0e0; }
-  #loadBtn { color: #14202e; background: #e0c860; }
   #counters { color: #6fa8dc; font-size: 11px; margin-top: 6px; opacity: 0.7; display:flex; gap:14px; }
   #drawHint { color: #f0a050; font-size: 11px; margin-top: 4px; height: 14px; text-align: center; }
 
@@ -127,26 +144,20 @@
   .colorDot { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
   .colorDot.active { border-color: #ffe066; }
 
-  .modal-bg {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6); z-index: 100;
-    align-items: center; justify-content: center;
-  }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
   .modal-bg.show { display: flex; }
-  .modal-box {
-    background: #1e2e40; border-radius: 14px; padding: 24px 20px;
-    width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  }
+  .modal-box { background: #1e2e40; border-radius: 14px; padding: 24px 20px; width: 300px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
   .modal-box h2 { color: #e0e8f0; font-size: 15px; margin-bottom: 14px; text-align: center; }
-  .modal-input {
-    width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #4a6a7a;
-    background: #14202e; color: #fff; font-size: 14px; margin-bottom: 16px; outline: none;
-  }
+  .modal-input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #4a6a7a; background: #14202e; color: #fff; font-size: 14px; margin-bottom: 16px; outline: none; }
   .modal-btns { display: flex; gap: 10px; }
   .modal-ok     { flex:1; padding:10px; background:#6fa8dc; color:#14202e; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
   .modal-cancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
 
-  #deleteBox p { color: #e0e8f0; font-size: 14px; margin-bottom: 16px; text-align:center; }
+  #helpBtn { color: #14202e; background: #a0c8e0; }
+  .help-section { margin-bottom: 14px; }
+  .help-title { color: #6fa8dc; font-size: 13px; font-weight: bold; margin-bottom: 6px; border-bottom: 1px solid #2a3e52; padding-bottom: 4px; }
+  .help-item { color: #c8d8e8; font-size: 12px; padding: 3px 0 3px 8px; line-height: 1.5; }
+  .help-item b { color: #fff; }
   #deleteOk     { flex:1; padding:10px; background:#d1453b; color:#fff; font-weight:bold; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
   #deleteCancel { flex:1; padding:10px; background:#3a4a5a; color:#aaa; border:none; border-radius:10px; font-size:14px; cursor:pointer; }
 </style>
@@ -154,6 +165,10 @@
 <body>
   <h1>バレーボール配置表</h1>
   <div id="status"></div>
+
+  <div id="patternRow">
+    <input id="patternName" type="text" placeholder="パターン名を入力（例：レセプション隊形）" maxlength="30">
+  </div>
 
   <div id="scene">
     <svg id="arrowLayer">
@@ -170,24 +185,22 @@
     <div id="net"></div>
     <div id="netLabel">ネット</div>
     <div id="court"><div class="attack-line"></div></div>
-
-    <div class="draggable pos front" data-x="0" data-y="0" style="left:60px; top:130px;">FL</div>
-    <div class="draggable pos front" data-x="0" data-y="0" style="left:155px; top:130px;">FC</div>
-    <div class="draggable pos front" data-x="0" data-y="0" style="left:250px; top:130px;">FR</div>
-    <div class="draggable pos back"  data-x="0" data-y="0" style="left:60px; top:350px;">BL</div>
-    <div class="draggable pos back"  data-x="0" data-y="0" style="left:155px; top:370px;">BC</div>
-    <div class="draggable pos back"  data-x="0" data-y="0" style="left:250px; top:350px;">BR</div>
-    <div class="draggable ball"      data-x="0" data-y="0" style="left:170px; top:0px;"></div>
+    <div id="benchLabel" style="display:none">控え</div>
   </div>
 
   <div id="btnRow">
+    <button class="btn" id="modeBtn">役割モード</button>
+    <button class="btn" id="rotateBtn">🔄 ローテ</button>
+  </div>
+  <div id="btnRow2">
     <button class="btn" id="addZoneBtn">＋ エリア</button>
     <button class="btn" id="addArrowBtn">→ 矢印</button>
     <button class="btn" id="resetBtn">リセット</button>
   </div>
-  <div id="btnRow2">
+  <div id="btnRow3">
     <button class="btn" id="saveBtn">💾 保存</button>
     <button class="btn" id="loadBtn">📂 読み込み</button>
+    <button class="btn" id="helpBtn">❓ 使い方</button>
     <input type="file" id="fileInput" accept=".json" style="display:none">
   </div>
   <div id="counters">
@@ -196,7 +209,6 @@
   </div>
   <div id="drawHint"></div>
 
-  <!-- エリアモーダル -->
   <div class="modal-bg" id="zoneModal">
     <div class="modal-box">
       <h2>エリアを追加</h2>
@@ -209,13 +221,12 @@
         <div class="colorDot"       data-color="rgba(150,80,200,0.45)"  data-border="rgba(220,160,255,0.9)" style="background:#9650c8;"></div>
       </div>
       <div class="modal-btns">
-        <button class="modal-ok"     id="zoneOk">追加</button>
+        <button class="modal-ok" id="zoneOk">追加</button>
         <button class="modal-cancel" id="zoneCancel">キャンセル</button>
       </div>
     </div>
   </div>
 
-  <!-- 矢印モーダル -->
   <div class="modal-bg" id="arrowModal">
     <div class="modal-box">
       <h2>矢印の色を選択</h2>
@@ -227,14 +238,65 @@
         <div class="colorDot"        data-stroke="#ffffff" data-marker="ah-white"  style="background:#ffffff;"></div>
       </div>
       <div class="modal-btns">
-        <button class="modal-ok"     id="arrowOk">描画モードへ</button>
+        <button class="modal-ok" id="arrowOk">描画モードへ</button>
         <button class="modal-cancel" id="arrowCancel">キャンセル</button>
       </div>
     </div>
   </div>
 
-  <!-- 削除モーダル -->
-  <div class="modal-bg" id="deleteModal">
+  <div class="modal-bg" id="nameModal">
+    <div class="modal-box">
+      <h2>選手名を変更</h2>
+      <input class="modal-input" id="playerNameInput" type="text" placeholder="名前を入力" maxlength="6">
+      <div class="modal-btns">
+        <button class="modal-ok" id="nameOk">変更</button>
+        <button class="modal-cancel" id="nameCancel">キャンセル</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="helpModal">
+    <div class="modal-box" style="width:320px; max-height:80vh; overflow-y:auto;">
+      <h2>📖 使い方マニュアル</h2>
+      <div class="help-section">
+        <div class="help-title">🏐 基本操作</div>
+        <div class="help-item">選手を<b>ドラッグ</b>で移動</div>
+        <div class="help-item">選手を<b>ダブルタップ</b>で名前変更</div>
+        <div class="help-item">ボールも<b>ドラッグ</b>で移動可能</div>
+      </div>
+      <div class="help-section">
+        <div class="help-title">⬜ エリア追加</div>
+        <div class="help-item">「＋エリア」→ 名前・色を選んで追加（最大5つ）</div>
+        <div class="help-item">上下左右の<b>白丸ハンドル</b>をドラッグでサイズ変更（縦横独立）</div>
+        <div class="help-item">楕円を<b>長押し</b>で削除</div>
+      </div>
+      <div class="help-section">
+        <div class="help-title">→ 矢印描画</div>
+        <div class="help-item">「→矢印」→ 色選択 → コート上でドラッグして描画（最大5本）</div>
+        <div class="help-item">矢印を<b>長押し</b>で削除</div>
+      </div>
+      <div class="help-section">
+        <div class="help-title">🔄 役割モード（烏野カラー）</div>
+        <div class="help-item">「役割モード」ボタンでS/OH/MB/OP/Liに切替</div>
+        <div class="help-item">Li（リベロ）はオレンジ、他は黒×オレンジ枠</div>
+        <div class="help-item">後衛MBはLiに自動置換、控えに表示</div>
+        <div class="help-item">「🔄ローテ」ボタンで時計回りにローテーション</div>
+      </div>
+      <div class="help-section">
+        <div class="help-title">💾 保存・読み込み</div>
+        <div class="help-item">上部の<b>パターン名</b>を入力してから保存推奨</div>
+        <div class="help-item">「💾保存」でJSONファイルをダウンロード</div>
+        <div class="help-item">「📂読み込み」でJSONファイルを選択して復元</div>
+      </div>
+      <div class="help-section">
+        <div class="help-title">🔁 リセット</div>
+        <div class="help-item">選手の位置・エリア・矢印をすべて初期状態に戻す</div>
+      </div>
+      <div class="modal-btns" style="margin-top:16px;">
+        <button class="modal-ok" id="helpClose">閉じる</button>
+      </div>
+    </div>
+  </div>
     <div class="modal-box" id="deleteBox">
       <p id="deleteMsg">削除しますか？</p>
       <div class="modal-btns">
@@ -248,39 +310,225 @@
   // LIFF
   const LIFF_ID = "2010242806-SSgzSrhm";
   (async () => {
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      document.getElementById('status').textContent = 'LINE内で起動中';
-    } catch(e) {
-      document.getElementById('status').textContent = 'ブラウザモード';
-    }
+    try { await liff.init({ liffId: LIFF_ID }); document.getElementById('status').textContent = 'LINE内で起動中'; }
+    catch(e) { document.getElementById('status').textContent = 'ブラウザモード'; }
   })();
 
-  // ポジション・ボールドラッグ
-  interact('.draggable').draggable({
-    listeners: {
-      move(e) {
+  const scene = document.getElementById('scene');
+  const court = document.getElementById('court');
+  const MAX = 5;
+  let zones = [], arrows = [], pendingDelete = null;
+  let drawMode = false, arrowStroke = '#ff6666', arrowMarker = 'ah-red';
+  let zoneColor = { bg: 'rgba(214,69,59,0.45)', border: 'rgba(255,150,140,0.9)' };
+  let mode = 'position'; // 'position' or 'role'
+  let nameTargetEl = null;
+
+  // コート6マスの座標（中心基準・wrapperのleft/top）
+  // 0:前左 1:前中 2:前右 3:後右 4:後中 5:後左（時計回り）
+  const SLOTS = [
+    { left: 60,  top: 130 }, // 0 前衛左
+    { left: 155, top: 130 }, // 1 前衛中
+    { left: 250, top: 130 }, // 2 前衛右
+    { left: 250, top: 330 }, // 3 後衛右
+    { left: 155, top: 340 }, // 4 後衛中
+    { left: 60,  top: 330 }, // 5 後衛左
+  ];
+
+  // ===== ポジション要素管理 =====
+  let posElements = []; // コート上の選手要素
+  let benchEl = null;   // 番外の控え
+
+  function clearPlayers() {
+    posElements.forEach(el => el.remove());
+    posElements = [];
+    if(benchEl) { benchEl.remove(); benchEl = null; }
+  }
+
+  // 位置モード（FL/FC/FR...）
+  function buildPositionMode() {
+    clearPlayers();
+    document.getElementById('benchLabel').style.display = 'none';
+    const defs = [
+      { label:'FL', cls:'front', left:60,  top:130 },
+      { label:'FC', cls:'front', left:155, top:130 },
+      { label:'FR', cls:'front', left:250, top:130 },
+      { label:'BL', cls:'back',  left:60,  top:330 },
+      { label:'BC', cls:'back',  left:155, top:350 },
+      { label:'BR', cls:'back',  left:250, top:330 },
+    ];
+    defs.forEach(d => {
+      const el = makePlayer(d.label, `pos ${d.cls}`, d.left, d.top);
+      posElements.push(el);
+    });
+    // ボール
+    const ball = makeBall(170, 0);
+    posElements.push(ball);
+  }
+
+  // 役割モード（S/OH/MB/OP/Li）
+  // ローテーション基準：rotationState は6人の役割をSLOT順に保持
+  // 初期: 前左OH, 前中MB, 前右OH, 後右S, 後中OP, 後左MB
+  let rotationOrder = ['OH','MB','OH','S','OP','MB']; // SLOT 0..5 に対応
+  // ローテーションは時計回り。Sが右下(SLOT3)スタート
+
+  function buildRoleMode() {
+    clearPlayers();
+    document.getElementById('benchLabel').style.display = 'block';
+    renderRole();
+    const ball = makeBall(170, 0);
+    posElements.push(ball);
+  }
+
+  function renderRole() {
+    // 既存の選手（ボール以外）を消す
+    posElements.filter(el => !el.classList.contains('ball')).forEach(el => el.remove());
+    posElements = posElements.filter(el => el.classList.contains('ball'));
+    if(benchEl) { benchEl.remove(); benchEl = null; }
+
+    // 後衛のMBはLiに置き換え（前衛MBはそのまま、置き換えられたMBは番外へ）
+    // 後衛スロット = 3,4,5
+    let liberoPlaced = false;
+    let benchMB = null;
+
+    for(let i = 0; i < 6; i++) {
+      let role = rotationOrder[i];
+      const isBack = (i >= 3);
+      let displayRole = role;
+      let extraCls = '';
+
+      if(role === 'MB' && isBack && !liberoPlaced) {
+        // 後衛のMB → Liに置き換え、MBは番外へ
+        displayRole = 'Li';
+        extraCls = 'libero';
+        liberoPlaced = true;
+        benchMB = 'MB';
+      }
+      const el = makePlayer(displayRole, `pos role ${extraCls}`, SLOTS[i].left, SLOTS[i].top);
+      posElements.push(el);
+    }
+
+    // 番外にMB表示
+    if(benchMB) {
+      benchEl = document.createElement('div');
+      benchEl.className = 'pos role bench-player';
+      benchEl.textContent = 'MB';
+      benchEl.style.left = '40px';
+      benchEl.setAttribute('data-x', 0); benchEl.setAttribute('data-y', 0);
+      scene.appendChild(benchEl);
+      makeDraggable(benchEl);
+      attachNameLongPress(benchEl);
+    }
+  }
+
+  // ローテーション（時計回り：後右の人が前右へ上がる）
+  // 時計回り順序 seq: 後右(3)→前右(2)→前中(1)→前左(0)→後左(5)→後中(4)
+  const ROT_SEQ = [3,2,1,0,5,4];
+  document.getElementById('rotateBtn').addEventListener('click', () => {
+    const old = [...rotationOrder];
+    for(let k=0; k<ROT_SEQ.length; k++) {
+      const cur = ROT_SEQ[k];
+      const next = ROT_SEQ[(k+1) % ROT_SEQ.length];
+      rotationOrder[cur] = old[next];
+    }
+    renderRole();
+  });
+
+  // ===== 要素生成 =====
+  function makePlayer(label, className, left, top) {
+    const el = document.createElement('div');
+    el.className = `draggable ${className}`;
+    el.textContent = label;
+    el.style.left = left + 'px';
+    el.style.top  = top + 'px';
+    el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
+    scene.appendChild(el);
+    makeDraggable(el);
+    attachNameLongPress(el);
+    return el;
+  }
+
+  function makeBall(left, top) {
+    const el = document.createElement('div');
+    el.className = 'draggable ball';
+    el.style.left = left + 'px'; el.style.top = top + 'px';
+    el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
+    scene.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  function makeDraggable(el) {
+    interact(el).draggable({
+      listeners: { move(e) {
         const t = e.target;
         const x = (parseFloat(t.getAttribute('data-x'))||0) + e.dx;
         const y = (parseFloat(t.getAttribute('data-y'))||0) + e.dy;
         t.style.transform = `translate(${x}px,${y}px)`;
         t.setAttribute('data-x', x); t.setAttribute('data-y', y);
+      }}
+    });
+  }
+
+  // ダブルタップ/ダブルクリックで名前変更
+  function attachNameLongPress(el) {
+    if(el.classList.contains('ball')) return;
+    let lastTap = 0;
+    el.addEventListener('touchend', e => {
+      const now = Date.now();
+      if(now - lastTap < 300) {
+        e.preventDefault();
+        openNameModal(el);
+        lastTap = 0;
+      } else {
+        lastTap = now;
       }
+    });
+    el.addEventListener('dblclick', () => openNameModal(el));
+  }
+
+  function openNameModal(el) {
+    nameTargetEl = el;
+    document.getElementById('playerNameInput').value = el.textContent;
+    document.getElementById('nameModal').classList.add('show');
+  }
+  document.getElementById('nameOk').addEventListener('click', () => {
+    if(nameTargetEl) {
+      const v = document.getElementById('playerNameInput').value.trim();
+      if(v) nameTargetEl.textContent = v;
+    }
+    nameTargetEl = null;
+    document.getElementById('nameModal').classList.remove('show');
+  });
+  document.getElementById('nameCancel').addEventListener('click', () => {
+    nameTargetEl = null;
+    document.getElementById('nameModal').classList.remove('show');
+  });
+
+  // ===== モード切替 =====
+  document.getElementById('modeBtn').addEventListener('click', () => {
+    if(mode === 'position') {
+      mode = 'role';
+      document.getElementById('modeBtn').classList.add('role-active');
+      document.getElementById('modeBtn').textContent = '位置モード';
+      document.getElementById('rotateBtn').classList.add('show');
+      rotationOrder = ['OH','MB','OH','S','OP','MB'];
+      buildRoleMode();
+    } else {
+      mode = 'position';
+      document.getElementById('modeBtn').classList.remove('role-active');
+      document.getElementById('modeBtn').textContent = '役割モード';
+      document.getElementById('rotateBtn').classList.remove('show');
+      buildPositionMode();
     }
   });
 
-  const MAX = 5;
-  let zones = [], arrows = [], pendingDelete = null;
-  let drawMode = false, arrowStroke = '#ff6666', arrowMarker = 'ah-red';
-  let zoneColor = { bg: 'rgba(214,69,59,0.45)', border: 'rgba(255,150,140,0.9)' };
-
-  const scene       = document.getElementById('scene');
-  const arrowLayer  = document.getElementById('arrowLayer');
-  const previewLine = document.getElementById('previewLine');
-  const addZoneBtn  = document.getElementById('addZoneBtn');
+  // ===== エリア =====
+  const addZoneBtn = document.getElementById('addZoneBtn');
   const addArrowBtn = document.getElementById('addArrowBtn');
-  const resetBtn    = document.getElementById('resetBtn');
-  const drawHint    = document.getElementById('drawHint');
+  const resetBtn = document.getElementById('resetBtn');
+  const arrowLayer = document.getElementById('arrowLayer');
+  const previewLine = document.getElementById('previewLine');
+  const drawHint = document.getElementById('drawHint');
 
   function updateCounters() {
     document.getElementById('zoneCount').textContent  = `エリア: ${zones.length}/${MAX}`;
@@ -289,7 +537,6 @@
     addArrowBtn.disabled = arrows.length >= MAX && !drawMode;
   }
 
-  // ===== エリア =====
   addZoneBtn.addEventListener('click', () => {
     document.getElementById('zoneNameInput').value = '';
     document.getElementById('zoneModal').classList.add('show');
@@ -310,119 +557,74 @@
     document.getElementById('zoneModal').classList.remove('show');
     addZone(name, zoneColor.bg, zoneColor.border);
   });
-  document.getElementById('zoneNameInput').addEventListener('keydown', e => {
-    if(e.key === 'Enter') document.getElementById('zoneOk').click();
-  });
+  document.getElementById('zoneNameInput').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('zoneOk').click(); });
 
-  function addZone(name, bgColor, borderColor) {
-    if(zones.length >= MAX) return;
-
+  function addZone(name, bgColor, borderColor, preset) {
+    if(zones.length >= MAX && !preset) return;
     const MIN_W = 40, MIN_H = 30;
-    let w = 120, h = 75;
-    let dx = 0, dy = 0;
+    let w = preset ? parseFloat(preset.width) : 120;
+    let h = preset ? parseFloat(preset.height) : 75;
+    let dx = preset ? preset.dx : 0;
+    let dy = preset ? preset.dy : 0;
 
-    // ラッパー
     const wrapper = document.createElement('div');
     wrapper.className = 'zone-wrapper';
-    wrapper.style.cssText = `width:${w}px; height:${h}px; left:120px; top:240px;`;
-    wrapper.setAttribute('data-x', 0); wrapper.setAttribute('data-y', 0);
+    wrapper.style.cssText = `width:${w}px; height:${h}px; left:${preset?preset.left:'120px'}; top:${preset?preset.top:'240px'};`;
+    wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
+    if(preset) wrapper.style.transform = `translate(${dx}px,${dy}px)`;
 
-    // 楕円
     const ellipse = document.createElement('div');
     ellipse.className = 'zone-ellipse';
-    ellipse.style.cssText = `background:${bgColor}; border:2px dashed ${borderColor};`;
+    ellipse.style.background = bgColor; ellipse.style.border = `2px dashed ${borderColor}`.replace('2px dashed 2px dashed','2px dashed');
+    if(preset) ellipse.style.border = preset.border;
     ellipse.innerHTML = `<span>${name}</span>`;
     wrapper.appendChild(ellipse);
 
-    // ハンドル生成
-    const handles = {
-      top:    createHandle('handle-top'),
-      bottom: createHandle('handle-bottom'),
-      left:   createHandle('handle-left'),
-      right:  createHandle('handle-right'),
-    };
-    Object.values(handles).forEach(h => wrapper.appendChild(h));
+    ['handle-top','handle-bottom','handle-left','handle-right'].forEach(cls => {
+      const hd = document.createElement('div'); hd.className = `handle ${cls}`; wrapper.appendChild(hd);
+    });
 
     scene.appendChild(wrapper);
     zones.push(wrapper);
     updateCounters();
 
-    function createHandle(cls) {
-      const el = document.createElement('div');
-      el.className = `handle ${cls}`;
-      return el;
-    }
+    const handles = {
+      top: wrapper.querySelector('.handle-top'), bottom: wrapper.querySelector('.handle-bottom'),
+      left: wrapper.querySelector('.handle-left'), right: wrapper.querySelector('.handle-right'),
+    };
 
-    // ラッパードラッグ（楕円本体をタッチ）
     interact(wrapper).draggable({
       ignoreFrom: '.handle',
-      listeners: {
-        move(e) {
-          dx = (parseFloat(wrapper.getAttribute('data-x'))||0) + e.dx;
-          dy = (parseFloat(wrapper.getAttribute('data-y'))||0) + e.dy;
-          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-          wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
-        }
-      }
+      listeners: { move(e) {
+        dx = (parseFloat(wrapper.getAttribute('data-x'))||0) + e.dx;
+        dy = (parseFloat(wrapper.getAttribute('data-y'))||0) + e.dy;
+        wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+        wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
+      }}
     });
+    interact(handles.top).draggable({ listeners: { move(e) {
+      const newH = Math.max(MIN_H, h - e.dy); dy += (h - newH); h = newH;
+      wrapper.style.height = `${h}px`; wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+      wrapper.setAttribute('data-y', dy);
+    }}});
+    interact(handles.bottom).draggable({ listeners: { move(e) {
+      h = Math.max(MIN_H, h + e.dy); wrapper.style.height = `${h}px`;
+    }}});
+    interact(handles.left).draggable({ listeners: { move(e) {
+      const newW = Math.max(MIN_W, w - e.dx); dx += (w - newW); w = newW;
+      wrapper.style.width = `${w}px`; wrapper.style.transform = `translate(${dx}px,${dy}px)`;
+      wrapper.setAttribute('data-x', dx);
+    }}});
+    interact(handles.right).draggable({ listeners: { move(e) {
+      w = Math.max(MIN_W, w + e.dx); wrapper.style.width = `${w}px`;
+    }}});
 
-    // 上ハンドル（縦を上に伸ばす）
-    interact(handles.top).draggable({
-      listeners: {
-        move(e) {
-          const delta = e.dy;
-          const newH = Math.max(MIN_H, h - delta);
-          const newDy = dy + (h - newH);
-          h = newH; dy = newDy;
-          wrapper.style.height = `${h}px`;
-          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-          wrapper.setAttribute('data-y', dy);
-        }
-      }
-    });
-
-    // 下ハンドル（縦を下に伸ばす）
-    interact(handles.bottom).draggable({
-      listeners: {
-        move(e) {
-          h = Math.max(MIN_H, h + e.dy);
-          wrapper.style.height = `${h}px`;
-        }
-      }
-    });
-
-    // 左ハンドル（横を左に伸ばす）
-    interact(handles.left).draggable({
-      listeners: {
-        move(e) {
-          const delta = e.dx;
-          const newW = Math.max(MIN_W, w - delta);
-          const newDx = dx + (w - newW);
-          w = newW; dx = newDx;
-          wrapper.style.width = `${w}px`;
-          wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-          wrapper.setAttribute('data-x', dx);
-        }
-      }
-    });
-
-    // 右ハンドル（横を右に伸ばす）
-    interact(handles.right).draggable({
-      listeners: {
-        move(e) {
-          w = Math.max(MIN_W, w + e.dx);
-          wrapper.style.width = `${w}px`;
-        }
-      }
-    });
-
-    // 長押しで削除
     let pt = null;
-    ellipse.addEventListener('touchstart', () => {
-      pt = setTimeout(() => showDelete(wrapper, `「${name}」を削除しますか？`, 'zone'), 700);
-    }, {passive:true});
+    ellipse.addEventListener('touchstart', () => { pt = setTimeout(() => showDelete(wrapper, `「${name}」を削除しますか？`, 'zone'), 700); }, {passive:true});
     ellipse.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
     ellipse.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
+
+    return wrapper;
   }
 
   // ===== 矢印 =====
@@ -441,39 +643,25 @@
       arrowStroke = d.dataset.stroke; arrowMarker = d.dataset.marker;
     });
   });
-
   document.getElementById('arrowOk').addEventListener('click', () => {
-    document.getElementById('arrowModal').classList.remove('show');
-    enterDrawMode();
+    document.getElementById('arrowModal').classList.remove('show'); enterDrawMode();
   });
 
   function enterDrawMode() {
-    drawMode = true;
-    addArrowBtn.classList.add('active');
+    drawMode = true; addArrowBtn.classList.add('active');
     addArrowBtn.textContent = '✕ キャンセル';
     drawHint.textContent = 'コート上でドラッグして矢印を描いてください';
     arrowLayer.classList.add('drawing');
   }
   function exitDrawMode() {
-    drawMode = false;
-    addArrowBtn.classList.remove('active');
-    addArrowBtn.textContent = '→ 矢印';
-    drawHint.textContent = '';
-    arrowLayer.classList.remove('drawing');
-    previewLine.style.display = 'none';
+    drawMode = false; addArrowBtn.classList.remove('active');
+    addArrowBtn.textContent = '→ 矢印'; drawHint.textContent = '';
+    arrowLayer.classList.remove('drawing'); previewLine.style.display = 'none';
   }
 
   let startPt = null;
-  function getPos(e, touch) {
-    const r = scene.getBoundingClientRect();
-    const src = touch ? e.touches[0] : e;
-    return { x: src.clientX - r.left, y: src.clientY - r.top };
-  }
-  function getEndPos(e, touch) {
-    const r = scene.getBoundingClientRect();
-    const src = touch ? e.changedTouches[0] : e;
-    return { x: src.clientX - r.left, y: src.clientY - r.top };
-  }
+  function getPos(e, touch) { const r = scene.getBoundingClientRect(); const s = touch ? e.touches[0] : e; return { x: s.clientX - r.left, y: s.clientY - r.top }; }
+  function getEndPos(e, touch) { const r = scene.getBoundingClientRect(); const s = touch ? e.changedTouches[0] : e; return { x: s.clientX - r.left, y: s.clientY - r.top }; }
 
   arrowLayer.addEventListener('touchstart', e => {
     if(!drawMode) return; e.preventDefault();
@@ -485,8 +673,7 @@
   }, {passive:false});
   arrowLayer.addEventListener('touchmove', e => {
     if(!drawMode || !startPt) return; e.preventDefault();
-    const p = getPos(e, true);
-    previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
+    const p = getPos(e, true); previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
   }, {passive:false});
   arrowLayer.addEventListener('touchend', e => {
     if(!drawMode || !startPt) return;
@@ -497,8 +684,7 @@
   }, {passive:true});
 
   arrowLayer.addEventListener('mousedown', e => {
-    if(!drawMode) return;
-    startPt = getPos(e, false);
+    if(!drawMode) return; startPt = getPos(e, false);
     previewLine.style.display = 'block';
     previewLine.setAttribute('x1', startPt.x); previewLine.setAttribute('y1', startPt.y);
     previewLine.setAttribute('x2', startPt.x); previewLine.setAttribute('y2', startPt.y);
@@ -506,8 +692,7 @@
   });
   arrowLayer.addEventListener('mousemove', e => {
     if(!drawMode || !startPt) return;
-    const p = getPos(e, false);
-    previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
+    const p = getPos(e, false); previewLine.setAttribute('x2', p.x); previewLine.setAttribute('y2', p.y);
   });
   arrowLayer.addEventListener('mouseup', e => {
     if(!drawMode || !startPt) return;
@@ -524,8 +709,7 @@
     line.setAttribute('stroke',stroke); line.setAttribute('stroke-width','3');
     line.setAttribute('marker-end',`url(#${marker})`);
     line.style.pointerEvents = 'stroke'; line.style.cursor = 'pointer';
-    arrowLayer.appendChild(line);
-    arrows.push(line);
+    arrowLayer.appendChild(line); arrows.push(line);
     let pt = null;
     line.addEventListener('touchstart', () => { pt = setTimeout(() => showDelete(line, '矢印を削除しますか？', 'arrow'), 700); }, {passive:true});
     line.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
@@ -533,7 +717,6 @@
     line.addEventListener('dblclick',  () => showDelete(line, '矢印を削除しますか？', 'arrow'));
   }
 
-  // 削除
   function showDelete(target, msg, type) {
     pendingDelete = { target, type };
     document.getElementById('deleteMsg').textContent = msg;
@@ -542,202 +725,139 @@
   document.getElementById('deleteOk').addEventListener('click', () => {
     if(!pendingDelete) return;
     const { target, type } = pendingDelete;
-    if(type === 'zone')  { target.remove(); zones  = zones.filter(z => z !== target); }
+    if(type === 'zone')  { target.remove(); zones = zones.filter(z => z !== target); }
     if(type === 'arrow') { target.remove(); arrows = arrows.filter(a => a !== target); }
     pendingDelete = null;
     document.getElementById('deleteModal').classList.remove('show');
     updateCounters();
   });
   document.getElementById('deleteCancel').addEventListener('click', () => {
-    pendingDelete = null;
-    document.getElementById('deleteModal').classList.remove('show');
+    pendingDelete = null; document.getElementById('deleteModal').classList.remove('show');
+  });
+
+  // リセット
+  resetBtn.addEventListener('click', () => {
+    if(mode === 'position') buildPositionMode();
+    else { rotationOrder = ['OH','MB','OH','S','OP','MB']; buildRoleMode(); }
+    zones.forEach(z => z.remove()); zones = [];
+    arrows.forEach(a => a.remove()); arrows = [];
+    exitDrawMode(); updateCounters();
   });
 
   // ===== JSON保存 =====
   document.getElementById('saveBtn').addEventListener('click', () => {
-    // ポジション・ボール
-    const positions = [];
-    document.querySelectorAll('.draggable').forEach(el => {
-      positions.push({
-        label: el.textContent.trim(),
-        className: el.className,
-        left: el.style.left,
-        top: el.style.top,
-        dx: parseFloat(el.getAttribute('data-x')) || 0,
-        dy: parseFloat(el.getAttribute('data-y')) || 0
-      });
-    });
-
-    // エリア
-    const zoneData = zones.map(w => {
-      const ellipse = w.querySelector('.zone-ellipse');
-      return {
-        name: ellipse.querySelector('span').textContent,
-        bg: ellipse.style.background,
-        border: ellipse.style.border,
-        left: w.style.left,
-        top: w.style.top,
-        width: w.style.width,
-        height: w.style.height,
-        dx: parseFloat(w.getAttribute('data-x')) || 0,
-        dy: parseFloat(w.getAttribute('data-y')) || 0
-      };
-    });
-
-    // 矢印
-    const arrowData = arrows.map(line => ({
-      x1: line.getAttribute('x1'), y1: line.getAttribute('y1'),
-      x2: line.getAttribute('x2'), y2: line.getAttribute('y2'),
-      stroke: line.getAttribute('stroke'),
-      marker: line.getAttribute('marker-end').replace('url(#','').replace(')','')
+    const players = posElements.map(el => ({
+      label: el.textContent.trim(),
+      className: el.className,
+      left: el.style.left, top: el.style.top,
+      dx: parseFloat(el.getAttribute('data-x'))||0,
+      dy: parseFloat(el.getAttribute('data-y'))||0
     }));
-
-    const data = { positions, zones: zoneData, arrows: arrowData };
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    const now  = new Date();
-    const ts   = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-    a.href = url; a.download = `volley_${ts}.json`;
+    let bench = null;
+    if(benchEl) bench = {
+      label: benchEl.textContent.trim(), className: benchEl.className,
+      left: benchEl.style.left,
+      dx: parseFloat(benchEl.getAttribute('data-x'))||0,
+      dy: parseFloat(benchEl.getAttribute('data-y'))||0
+    };
+    const zoneData = zones.map(w => {
+      const el = w.querySelector('.zone-ellipse');
+      return { name: el.querySelector('span').textContent, bg: el.style.background, border: el.style.border,
+        left: w.style.left, top: w.style.top, width: w.style.width, height: w.style.height,
+        dx: parseFloat(w.getAttribute('data-x'))||0, dy: parseFloat(w.getAttribute('data-y'))||0 };
+    });
+    const arrowData = arrows.map(l => ({
+      x1: l.getAttribute('x1'), y1: l.getAttribute('y1'), x2: l.getAttribute('x2'), y2: l.getAttribute('y2'),
+      stroke: l.getAttribute('stroke'), marker: l.getAttribute('marker-end').replace('url(#','').replace(')','')
+    }));
+    const data = {
+      patternName: document.getElementById('patternName').value,
+      mode, rotationOrder: [...rotationOrder],
+      players, bench, zones: zoneData, arrows: arrowData
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now = new Date();
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    const pn = document.getElementById('patternName').value.trim().replace(/[\\/:*?"<>|\s]/g,'_');
+    a.href = url; a.download = `${pn||'volley'}_${ts}.json`;
     a.click(); URL.revokeObjectURL(url);
   });
 
   // ===== JSON読み込み =====
-  document.getElementById('loadBtn').addEventListener('click', () => {
-    document.getElementById('fileInput').click();
-  });
-
+  document.getElementById('loadBtn').addEventListener('click', () => document.getElementById('fileInput').click());
   document.getElementById('fileInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if(!file) return;
+    const file = e.target.files[0]; if(!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
       try {
         const data = JSON.parse(ev.target.result);
+        document.getElementById('patternName').value = data.patternName || '';
+        mode = data.mode || 'position';
+        if(data.rotationOrder) rotationOrder = [...data.rotationOrder];
 
-        // ポジション・ボール復元
-        if(data.positions) {
-          const draggables = document.querySelectorAll('.draggable');
-          data.positions.forEach((p, i) => {
-            if(!draggables[i]) return;
-            draggables[i].style.transform = `translate(${p.dx}px,${p.dy}px)`;
-            draggables[i].setAttribute('data-x', p.dx);
-            draggables[i].setAttribute('data-y', p.dy);
-          });
+        // モードボタン表示更新
+        if(mode === 'role') {
+          document.getElementById('modeBtn').classList.add('role-active');
+          document.getElementById('modeBtn').textContent = '位置モード';
+          document.getElementById('rotateBtn').classList.add('show');
+        } else {
+          document.getElementById('modeBtn').classList.remove('role-active');
+          document.getElementById('modeBtn').textContent = '役割モード';
+          document.getElementById('rotateBtn').classList.remove('show');
         }
 
-        // 既存エリア・矢印を削除
+        // 既存全削除
+        clearPlayers();
         zones.forEach(z => z.remove()); zones = [];
         arrows.forEach(a => a.remove()); arrows = [];
 
+        // 選手復元
+        (data.players||[]).forEach(p => {
+          const el = document.createElement('div');
+          el.className = p.className;
+          el.textContent = p.label;
+          el.style.left = p.left; el.style.top = p.top;
+          el.setAttribute('data-x', p.dx); el.setAttribute('data-y', p.dy);
+          el.style.transform = `translate(${p.dx}px,${p.dy}px)`;
+          scene.appendChild(el);
+          makeDraggable(el);
+          if(!el.classList.contains('ball')) attachNameLongPress(el);
+          posElements.push(el);
+        });
+        // 番外復元
+        if(data.bench) {
+          benchEl = document.createElement('div');
+          benchEl.className = data.bench.className;
+          benchEl.textContent = data.bench.label;
+          benchEl.style.left = data.bench.left;
+          benchEl.setAttribute('data-x', data.bench.dx); benchEl.setAttribute('data-y', data.bench.dy);
+          benchEl.style.transform = `translate(${data.bench.dx}px,${data.bench.dy}px)`;
+          scene.appendChild(benchEl);
+          makeDraggable(benchEl);
+          attachNameLongPress(benchEl);
+          document.getElementById('benchLabel').style.display = 'block';
+        }
         // エリア復元
-        if(data.zones) {
-          data.zones.forEach(z => {
-            // bgからcolorとborderを抽出して再生成
-            const wrapper = document.createElement('div');
-            wrapper.className = 'zone-wrapper';
-            wrapper.style.cssText = `width:${z.width}; height:${z.height}; left:${z.left}; top:${z.top};`;
-            wrapper.setAttribute('data-x', z.dx); wrapper.setAttribute('data-y', z.dy);
-            wrapper.style.transform = `translate(${z.dx}px,${z.dy}px)`;
-
-            const ellipse = document.createElement('div');
-            ellipse.className = 'zone-ellipse';
-            ellipse.style.background = z.bg;
-            ellipse.style.border = z.border;
-            ellipse.innerHTML = `<span>${z.name}</span>`;
-            wrapper.appendChild(ellipse);
-
-            // ハンドル
-            ['handle-top','handle-bottom','handle-left','handle-right'].forEach(cls => {
-              const h = document.createElement('div');
-              h.className = `handle ${cls}`; wrapper.appendChild(h);
-            });
-
-            scene.appendChild(wrapper);
-            zones.push(wrapper);
-
-            // ドラッグ再設定
-            const MIN_W = 40, MIN_H = 30;
-            let w = parseFloat(z.width), h = parseFloat(z.height);
-            let dx = z.dx, dy = z.dy;
-            const handles = {
-              top:    wrapper.querySelector('.handle-top'),
-              bottom: wrapper.querySelector('.handle-bottom'),
-              left:   wrapper.querySelector('.handle-left'),
-              right:  wrapper.querySelector('.handle-right'),
-            };
-
-            interact(wrapper).draggable({
-              ignoreFrom: '.handle',
-              listeners: { move(e) {
-                dx = (parseFloat(wrapper.getAttribute('data-x'))||0) + e.dx;
-                dy = (parseFloat(wrapper.getAttribute('data-y'))||0) + e.dy;
-                wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-                wrapper.setAttribute('data-x', dx); wrapper.setAttribute('data-y', dy);
-              }}
-            });
-            interact(handles.top).draggable({ listeners: { move(e) {
-              const newH = Math.max(MIN_H, h - e.dy);
-              dy += (h - newH); h = newH;
-              wrapper.style.height = `${h}px`;
-              wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-              wrapper.setAttribute('data-y', dy);
-            }}});
-            interact(handles.bottom).draggable({ listeners: { move(e) {
-              h = Math.max(MIN_H, h + e.dy); wrapper.style.height = `${h}px`;
-            }}});
-            interact(handles.left).draggable({ listeners: { move(e) {
-              const newW = Math.max(MIN_W, w - e.dx);
-              dx += (w - newW); w = newW;
-              wrapper.style.width = `${w}px`;
-              wrapper.style.transform = `translate(${dx}px,${dy}px)`;
-              wrapper.setAttribute('data-x', dx);
-            }}});
-            interact(handles.right).draggable({ listeners: { move(e) {
-              w = Math.max(MIN_W, w + e.dx); wrapper.style.width = `${w}px`;
-            }}});
-
-            let pt = null;
-            ellipse.addEventListener('touchstart', () => {
-              pt = setTimeout(() => showDelete(wrapper, `「${z.name}」を削除しますか？`, 'zone'), 700);
-            }, {passive:true});
-            ellipse.addEventListener('touchend',  () => clearTimeout(pt), {passive:true});
-            ellipse.addEventListener('touchmove', () => clearTimeout(pt), {passive:true});
-          });
-        }
-
+        (data.zones||[]).forEach(z => addZone(z.name, z.bg, z.border, z));
         // 矢印復元
-        if(data.arrows) {
-          data.arrows.forEach(a => {
-            commitArrow(
-              parseFloat(a.x1), parseFloat(a.y1),
-              parseFloat(a.x2), parseFloat(a.y2),
-              a.stroke, a.marker
-            );
-          });
-        }
+        (data.arrows||[]).forEach(a => commitArrow(parseFloat(a.x1),parseFloat(a.y1),parseFloat(a.x2),parseFloat(a.y2),a.stroke,a.marker));
 
         updateCounters();
       } catch(err) {
         alert('読み込みに失敗しました。正しいJSONファイルを選択してください。');
       }
     };
-    reader.readAsText(file);
-    e.target.value = ''; // 同じファイルを再選択できるようリセット
+    reader.readAsText(file); e.target.value = '';
   });
 
-  // リセット
-  resetBtn.addEventListener('click', () => {
-    document.querySelectorAll('.draggable').forEach(el => {
-      el.style.transform = 'translate(0px,0px)';
-      el.setAttribute('data-x', 0); el.setAttribute('data-y', 0);
-    });
-    zones.forEach(z => z.remove()); zones = [];
-    arrows.forEach(a => a.remove()); arrows = [];
-    exitDrawMode(); updateCounters();
-  });
+  document.getElementById('helpBtn').addEventListener('click', () => document.getElementById('helpModal').classList.add('show'));
+  document.getElementById('helpClose').addEventListener('click', () => document.getElementById('helpModal').classList.remove('show'));
+  document.getElementById('helpModal').addEventListener('click', e => { if(e.target===document.getElementById('helpModal')) document.getElementById('helpModal').classList.remove('show'); });
 
+  // 初期化
+  buildPositionMode();
   updateCounters();
 </script>
 </body>
